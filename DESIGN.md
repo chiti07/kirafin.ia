@@ -1,8 +1,8 @@
 # DESIGN.md — Kira Fintech Ledger & Orchestration Engine
 
-> **Status:** Draft — Day 1/2 (Plan & Understanding)
-> **Author:** juan.chitiva
-> **Last updated:** 2026-06-14
+> **Status:** Complete — Day 2 (Plan & Understanding)
+> **Author:** Juan Luis Chitiva
+> **Last updated:** 2026-06-16
 
 ---
 
@@ -19,21 +19,15 @@
 6. [Concurrency & Consistency Hazards](#6-concurrency--consistency-hazards)
 7. [Data Model Sketch](#7-data-model-sketch)
 8. [Open Questions](#8-open-questions)
+9. [Vendor Abstraction](#9-vendor-abstraction)
+10. [Idempotency Keys](#10-idempotency-keys)
+11. [Trade-offs & Out-of-Scope](#11-trade-offs--out-of-scope)
 
 ---
 
 ## 1. Business Problem
 
 Kira Fintech moves money across rails that are fundamentally different:
-
-| Rail | Settlement | Unit | Failure mode |
-|---|---|---|---|
-| ACH | T+1–T+2 | USD (cents) | Reversals up to 60 days |
-| Wire / SWIFT | Same-day / T+1 | USD (cents) | Final, but fees vary |
-| FedNow | Near-instant | USD (cents) | Final |
-| Solana (USDC) | ~400ms / 32 conf | USDC (6 decimals) | Chain reorgs |
-| Polygon (USDT) | ~2s / varies | USDT (6 decimals) | Chain reorgs |
-| Tron (USDT) | ~3s | USDT (6 decimals) | Chain reorgs |
 
 **The hard part:** keeping a single, correct set of books while money is simultaneously in-flight on all of these. A deposit that arrives on Solana isn't real money until it's confirmed. An ACH that's been sent can come back. A payout that was requested may or may not have hit the provider before a crash.
 
@@ -120,26 +114,30 @@ Counterparty
 - Each route execution carries an idempotency key — retrying a route never moves money twice
 - The ACH and crypto sends happen **after** the ledger debit — if the provider call fails, the debit is still there and a background job retries using the same idempotency key
 
+### Sequence Diagram
+
+![L1 Sequence Diagram](assets/images/diagrams/flow.png)
+
 ---
 
 ## 4. System Architecture — C4 Diagrams
 
 ### L1 — System Context
 
-![L1 System Context Diagram](assets/images/context-diagram.png)
+![L1 System Context Diagram](assets/images/c4/context-diagram.png)
 
 ---
 
 ### L2 — Container Diagram
 
-![L1 System Context Diagram](assets/images/container-diagram.png)
+![L1 System Context Diagram](assets/images/c4/container-diagram.png)
 
 
 ---
 
 ### L3 — Component Diagram (Ledger Engine)
 
-![L1 System Context Diagram](assets/images/component-diagram.png)
+![L1 System Context Diagram](assets/images/c4/component-diagram.png)
 
 ---
 
@@ -162,17 +160,6 @@ entry
 ├── created_at      TIMESTAMPTZ (immutable)
 └── metadata        JSONB (rail-specific details, chain tx hash, etc.)
 ```
-
-### Fees as entries
-
-When a 5,000 USDC off-ramp occurs (assume $5,000 USD equivalent, 0.1% platform fee + $0.25 pass-through):
-
-| transfer_id | account | direction | amount | currency | note |
-|---|---|---|---|---|---|
-| T1 | Northwind | credit | 499,975 | USD (cents) | net credit after fees |
-| T1 | Kira Platform Fee | debit | 500 | USD (cents) | 0.1% platform fee |
-| T1 | Kira Pass-through | debit | 25 | USD (cents) | fixed pass-through |
-| T1 | Liquidity Pool | credit | 500,000 | USD (cents) | source (off-ramp) |
 
 > All rows in the same transaction. Atomic or nothing.
 
@@ -233,6 +220,8 @@ An inbound crypto deposit is written immediately as `confirmed = false` (visible
 
 **Scenario:** Route fires, ledger debit is posted, server crashes before the ACH call reaches the provider. On restart, the debit exists but no payout happened. Or the call was made but the response was lost — we don't know if money moved.
 
+**The crash window** is the gap between the ledger write and the confirmed provider response. Any process death inside this window must be recoverable to an exactly-once outcome.
+
 **Guardrail:** Outbox pattern. The payout job is written to the DB in the same transaction as the ledger debit. A background worker reads the outbox and makes the provider call, marking the job complete only after a confirmed provider response. Idempotency key on the provider call prevents double-send on retry.
 
 ### Hazard 4 — Unconfirmed deposit credited too early (chain reorg)
@@ -265,89 +254,7 @@ Two failure modes the EOD reconciler must detect:
 
 > First-pass ERD — to be refined during implementation.
 
-```mermaid
-erDiagram
-    CLIENTS {
-        uuid id PK
-        string name
-        string status
-        timestamptz created_at
-    }
-
-    ACCOUNTS {
-        uuid id PK
-        uuid client_id FK
-        uuid parent_account_id FK
-        string type
-        string currency
-        string status
-        bool is_omnibus
-        timestamptz created_at
-    }
-
-    TRANSFERS {
-        uuid id PK
-        uuid account_id FK
-        string direction
-        string type
-        string status
-        string idempotency_key UK
-        string rail
-        jsonb metadata
-        timestamptz created_at
-    }
-
-    ENTRIES {
-        uuid id PK
-        uuid transfer_id FK
-        uuid account_id FK
-        string direction
-        bigint amount
-        string currency
-        bool confirmed
-        timestamptz created_at
-        jsonb metadata
-    }
-
-    ROUTES {
-        uuid id PK
-        uuid account_id FK
-        jsonb trigger_conditions
-        jsonb action
-        bool active
-        timestamptz created_at
-    }
-
-    PAYOUT_JOBS {
-        uuid id PK
-        uuid transfer_id FK
-        string status
-        string idempotency_key UK
-        int attempt_count
-        timestamptz next_attempt_at
-        jsonb provider_response
-    }
-
-    WEBHOOK_EVENTS {
-        uuid id PK
-        string provider
-        string event_id UK
-        string signature
-        bool verified
-        bool processed
-        jsonb payload
-        timestamptz received_at
-    }
-
-    CLIENTS ||--o{ ACCOUNTS : "owns"
-    ACCOUNTS ||--o| ACCOUNTS : "sub-account of (omnibus)"
-    ACCOUNTS ||--o{ TRANSFERS : "has"
-    ACCOUNTS ||--o{ ENTRIES : "has"
-    ACCOUNTS ||--o{ ROUTES : "has"
-    TRANSFERS ||--o{ ENTRIES : "generates"
-    TRANSFERS ||--o| PAYOUT_JOBS : "triggers"
-    WEBHOOK_EVENTS ||--o| TRANSFERS : "triggers"
-```
+![Data model](assets/images/diagrams/data-model.png)
 
 ---
 
@@ -360,4 +267,97 @@ erDiagram
 - [ ] Should routes support conditions beyond simple "on-inbound-credit"? (e.g. scheduled, threshold-based)
 - [ ] On-ramp rate source — hardcoded mock rate for now or integrate a price feed?
 - [ ] Reconciliation mismatch resolution — auto-flag only, or auto-correct?
-- [ ] Multi-currency account support in scope for Days 3–4, or USD-only?
+
+---
+
+## 9. Vendor Abstraction
+
+### The problem
+
+The brief requires two fiat rail providers with **deliberately different shapes** — different request formats, error codes, and idempotency mechanisms. The payout worker must not care which provider it's talking to.
+
+### Interface definition
+
+```
+FiatRailProvider
+├── initiatePayment(params: PaymentParams): Promise<PaymentResult>
+├── getPaymentStatus(providerRef: string): Promise<PaymentStatus>
+└── cancelPayment(providerRef: string): Promise<void>
+
+PaymentParams
+├── idempotencyKey   string   — caller-assigned, provider must honour
+├── amount           bigint   — integer cents
+├── currency         string   — always "USD" for fiat
+├── destinationRef   string   — routing+account or equivalent
+└── metadata         object   — rail-specific extras (memo, reference, etc.)
+
+PaymentResult
+├── providerRef      string   — provider's own transaction ID
+├── status           ENUM('pending', 'processing', 'settled', 'failed')
+└── raw              object   — original provider response (for audit)
+```
+
+### Two mock providers — different shapes, same interface
+
+| | Provider A ("SimpleRail") | Provider B ("VerboseRail") |
+|---|---|---|
+| Auth | API key header | OAuth2 bearer token |
+| Idempotency | `X-Idempotency-Key` header | `idempotency_token` body field |
+| Amount format | Integer cents | Decimal string `"42.00"` |
+| Error format | `{ error: string }` | `{ code: number, message: string, details: [] }` |
+| Status poll | `GET /payments/{id}` | `GET /transactions?ref={id}` |
+
+Each provider is a concrete class implementing `FiatRailProvider`. The adapter translates between the wire format and the common interface. The payout worker only ever calls the interface — it never touches provider-specific fields.
+
+### Adding a 3rd provider
+
+Create a new adapter class implementing `FiatRailProvider`. Register it in the provider registry with a config key. No changes to the worker, ledger, or routing logic.
+
+---
+
+## 10. Idempotency Keys
+
+Every operation that moves money has a precisely defined idempotency key. The same key presented twice always returns the same outcome and never moves money twice.
+
+| Scenario | Key formula | Enforced at |
+|---|---|---|
+| Inbound crypto deposit | `chain:tx_hash:log_index` | `webhook_events.event_id` + `transfers.idempotency_key` |
+| Outbound fiat payout | `transfer_id` (UUID) | `payout_jobs.idempotency_key` → provider header/field |
+| Outbound crypto send | `transfer_id` (UUID) | `payout_jobs.idempotency_key` → on-chain memo / nonce tracking |
+| Route execution | `account_id:route_id:trigger_transfer_id` | `transfers.idempotency_key` before route fires |
+| Webhook delivery | `provider:event_id` | `webhook_events.event_id` unique constraint |
+| Off-ramp conversion | `inbound_transfer_id:offramp` | `transfers.idempotency_key` |
+
+### How the guard works
+
+1. Before any write, the system looks up `transfers.idempotency_key` (or `webhook_events.event_id`).
+2. If found → return the original result. No second write.
+3. If not found → proceed, write atomically with the key.
+
+The lookup + write happens inside the same DB transaction as the ledger entries. There is no window between "key not found" and "key written" where a race could sneak in — the unique constraint on `idempotency_key` catches any concurrent duplicate and raises a conflict, which the caller handles by re-fetching the original result.
+
+---
+
+## 11. Trade-offs & Out-of-Scope
+
+### Calls made and why
+
+| Decision | What we chose | Why |
+|---|---|---|
+| Concurrency control | `SELECT FOR UPDATE` (pessimistic) | Correctness over throughput; same-account concurrent debits are rare |
+| Balance storage | Derived from entries, never stored | Single source of truth; no divergence possible |
+| Payout delivery | Outbox + background worker | Crash-safe; exactly-once delivery without distributed transactions |
+| Crypto finality | Configurable confirmation threshold | Reorg risk is chain-specific; hardcoding is dangerous |
+| Fee model | Fees as ledger entries | Full audit trail; reconciliation is always exact |
+| Pending/available | `confirmed` flag on entries | Simplest model; no separate pending table; upgrade is a single row update |
+| Vendor interface | Adapter pattern | Zero coupling between worker and provider; 3rd provider = new adapter only |
+
+### Explicitly out of scope for Days 1–2
+
+- **Real fiat rails** — both providers are mocked. Interface is designed to swap in real ones.
+- **FX rate feed** — off-ramp uses a hardcoded mock rate. Real price feed is a provider adapter change.
+- **Multi-currency accounts** — accounts are USD-denominated. USDC/USDT are transient (converted at ramp).
+- **Complex route conditions** — routes fire on every inbound credit. Threshold-based or scheduled triggers are not in scope.
+- **Auto-correction on reconciliation mismatch** — the reconciler flags discrepancies; human review resolves them.
+- **ACH partial fills** — treated as a failed transfer; the ledger debit is reversed. Full-amount-only assumption.
+- **Sub-client minimum balance** — no minimum balance rule exists in the brief. Zero is a valid terminal state (ADR-011).
