@@ -19,6 +19,7 @@
 | [ADR-008](#adr-008) | Pending vs. Available balance via `confirmed` flag on entries | Accepted | 2026-06-14 |
 | [ADR-009](#adr-009) | Omnibus account modeled as self-referencing parent in accounts table | Accepted | 2026-06-14 |
 | [ADR-010](#adr-010) | Webhook security: signature verification + replay protection + ordering | Accepted | 2026-06-14 |
+| [ADR-011](#adr-011) | Sub-client balance may reach zero — no intraday buffer | Accepted | 2026-06-15 |
 
 ---
 
@@ -227,6 +228,30 @@ Three-layer defense:
 - `webhook_events` table adds a write on every inbound webhook — acceptable overhead.
 - Providers that don't support signatures (mocked fiat rails in this challenge) skip step 1 but still pass through steps 2 and 3.
 - A webhook that arrives before its predecessor (out-of-order) is queued, not dropped.
+
+---
+
+## ADR-011
+
+### Sub-client balance may reach zero — no intraday buffer
+
+**Status:** Accepted
+
+**Context:**
+The question arose whether sub-client balances should be allowed to hit exactly zero intraday, or whether the system should hold a small buffer to absorb edge cases (e.g. a fee posting after a full sweep).
+
+**Decision:**
+Allow zero. No buffer is held. The balance invariant is simply `available_balance >= 0`.
+
+**Reasoning:**
+1. **Fees are atomic** — fee entries are posted in the same DB transaction as the transfer debit. The pre-debit check validates `available >= transfer_amount + fees`. There is no window where a transfer succeeds and a fee then surprises a zero balance.
+2. **No rounding drift** — integer minor units eliminate the fractional errors a buffer would guard against.
+3. **A buffer is an implicit minimum balance** — clients have not agreed to one. If a business rule requires a minimum, it must be an explicit, configurable `min_balance` field on the account, not a hidden system constant.
+4. **Zero is a valid terminal state** — a sub-client performing a full sweep should reach zero cleanly.
+
+**Consequences:**
+- The pre-debit check must include fees in its sufficiency test: `available >= amount + sum(fees)` — not just `available >= amount`.
+- If a configurable minimum balance is introduced later, it is an account-level field, not a system default.
 
 ---
 
