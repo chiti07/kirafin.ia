@@ -1,0 +1,43 @@
+spring:
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/kiraledger}
+    username: ${DB_USERNAME:kira}
+    password: ${DB_PASSWORD:kira}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          time_zone: UTC
+    open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+app:
+  api-key: ${API_KEY:dev-key-change-me}
+  solana:
+    rpc-url: ${SOLANA_RPC_URL:https://api.devnet.solana.com}
+    watch-address: ${SOLANA_WATCH_ADDRESS:}
+    confirmation-threshold: ${SOLANA_CONFIRMATION_THRESHOLD:32}
+    poll-interval-ms: ${SOLANA_POLL_INTERVAL_MS:5000}
+    usdc-mint: ${SOLANA_USDC_MINT:4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU}
+  offramp:
+    platform-fee-bps: ${PLATFORM_FEE_BPS:1}
+    fixed-fee-cents: ${FIXED_FEE_CENTS:50}
+  payout-worker:
+    poll-interval-ms: ${PAYOUT_WORKER_POLL_MS:10000}
+    batch-size: ${PAYOUT_WORKER_BATCH:5}
+    max-attempts: ${PAYOUT_WORKER_MAX_ATTEMPTS:5}
