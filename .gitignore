@@ -16,3 +16,7 @@ out/
 
 # OS
 .DS_Store
+
+# Local only
+context/
+RUNBOOK.md
