@@ -1,1 +1,19 @@
-/.idea/
+# Build output
+build/
+out/
+
+# Gradle
+.gradle/
+gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Env
+.env
+.env.local
+
+# OS
+.DS_Store
