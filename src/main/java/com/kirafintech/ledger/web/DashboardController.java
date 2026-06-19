@@ -2,6 +2,7 @@ package com.kirafintech.ledger.web;
 
 import com.kirafintech.ledger.domain.Transfer;
 import com.kirafintech.ledger.domain.enums.EntryDirection;
+import com.kirafintech.ledger.domain.enums.PayoutJobStatus;
 import com.kirafintech.ledger.domain.enums.TransferStatus;
 import com.kirafintech.ledger.repository.AccountRepository;
 import com.kirafintech.ledger.repository.EntryRepository;
@@ -79,10 +80,10 @@ public class DashboardController {
         DashboardResponse.FeesSummary fees = new DashboardResponse.FeesSummary(totalFees);
 
         DashboardResponse.PayoutJobCounts jobCounts = new DashboardResponse.PayoutJobCounts(
-                payoutJobRepo.countByStatus("pending"),
-                payoutJobRepo.countByStatus("processing"),
-                payoutJobRepo.countByStatus("completed"),
-                payoutJobRepo.countByStatus("failed")
+                payoutJobRepo.countByStatus(PayoutJobStatus.PENDING),
+                payoutJobRepo.countByStatus(PayoutJobStatus.PROCESSING),
+                payoutJobRepo.countByStatus(PayoutJobStatus.COMPLETED),
+                payoutJobRepo.countByStatus(PayoutJobStatus.FAILED)
         );
 
         ReconciliationService.ReconciliationReport recon = reconciliationService.run();

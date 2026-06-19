@@ -1,6 +1,7 @@
 package com.kirafintech.ledger.observability;
 
 import com.kirafintech.ledger.domain.enums.EntryDirection;
+import com.kirafintech.ledger.domain.enums.PayoutJobStatus;
 import com.kirafintech.ledger.domain.enums.TransferStatus;
 import com.kirafintech.ledger.repository.EntryRepository;
 import com.kirafintech.ledger.repository.PayoutJobRepository;
@@ -80,12 +81,12 @@ public class KiraMetrics {
 
         // --- Gauges (re-evaluated on every scrape) ---
         Gauge.builder("kira.payout.jobs.pending.current",
-                        payoutJobRepo, r -> r.countByStatus("pending"))
+                        payoutJobRepo, r -> r.countByStatus(PayoutJobStatus.PENDING))
                 .description("Current pending payout jobs — queue depth")
                 .register(registry);
 
         Gauge.builder("kira.payout.jobs.processing.current",
-                        payoutJobRepo, r -> r.countByStatus("processing"))
+                        payoutJobRepo, r -> r.countByStatus(PayoutJobStatus.PROCESSING))
                 .description("Current in-flight payout jobs")
                 .register(registry);
 
