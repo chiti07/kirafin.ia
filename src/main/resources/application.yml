@@ -33,7 +33,7 @@ management:
       environment: ${SPRING_PROFILES_ACTIVE:local}
 
 app:
-  api-key: ${API_KEY:dev-key-change-me}
+  api-key: ${API_KEY:dev-key-demo-kira}
   solana:
     rpc-url: ${SOLANA_RPC_URL:https://api.devnet.solana.com}
     watch-address: ${SOLANA_WATCH_ADDRESS:}
