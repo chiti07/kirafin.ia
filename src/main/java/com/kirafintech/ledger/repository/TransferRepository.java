@@ -21,6 +21,11 @@ public interface TransferRepository extends JpaRepository<Transfer, UUID> {
     @Query("UPDATE Transfer t SET t.status = :status WHERE t.id = :id")
     void updateStatus(@Param("id") UUID id, @Param("status") TransferStatus status);
 
+    // Native update for cases where Hibernate uppercase enum names are rejected by PostgreSQL ENUM type
+    @Modifying
+    @Query(value = "UPDATE transfers SET status = CAST(:status AS transfer_status) WHERE id = CAST(:id AS uuid)", nativeQuery = true)
+    void updateStatusNative(@Param("id") String id, @Param("status") String status);
+
     // Alerting: stuck pending transfers older than threshold
     @Query("SELECT t FROM Transfer t WHERE t.status = 'PENDING' AND t.createdAt < :threshold")
     List<Transfer> findStuckPending(@Param("threshold") Instant threshold);

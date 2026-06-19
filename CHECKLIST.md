@@ -23,20 +23,19 @@
 ---
 
 ## 3. Commit + Push
-- [ ] Stage all Day 3 + Day 4 + Grafana changes
-- [ ] Commit with meaningful message
-- [ ] Push to `main` → triggers Railway auto-deploy
+- [x] Stage all Day 3 + Day 4 + Grafana changes
+- [x] Commit with meaningful message
+- [x] PR merged to `main` → Railway auto-deploy triggered
 
 ---
 
 ## 4. Railway Deploy
-- [ ] Deploy completes successfully on Railway
-- [ ] `GET /actuator/health` returns `{"status":"UP"}` on public URL
-- [ ] End-to-end curl walkthrough passes on public URL:
-  - [ ] Balance starts at 0
-  - [ ] POST `/api/v1/transfers` with USDC deposit → 499,900 cents credited
-  - [ ] Routes fire → 2 payout jobs created (ACH + Polygon)
-  - [ ] Final balance = 19,900 cents ($199.00)
+- [x] Deploy completes successfully on Railway
+- [x] `GET /actuator/health` returns `{"status":"UP"}` on public URL
+- [x] End-to-end curl walkthrough passes on public URL:
+  - [x] POST `/api/v1/transfers` with USDC deposit → 499,900 cents credited
+  - [x] Routes fire → 2 payout jobs created (ACH + Polygon)
+  - [x] Final balance = 19,900 cents ($199.00) ✓
   - [ ] Idempotency replay → same transfer ID, balance unchanged
   - [ ] `GET /api/v1/dashboard` returns live data
   - [ ] `GET /api/v1/reconciliation/report` returns clean report

@@ -63,37 +63,36 @@ public class PayoutWorker {
     }
 
     private void processJob(PayoutJob job) {
-        job.setStatus(PayoutJobStatus.PROCESSING);
-        job.setAttempts(job.getAttempts() + 1);
-        payoutJobRepo.save(job);
+        int attempts = job.getAttempts() + 1;
+        // Use native UPDATE to avoid Hibernate sending uppercase enum names
+        // that PostgreSQL ENUM types reject (PostgreSQL ENUM values are lowercase).
+        payoutJobRepo.updateJobStatus(job.getId().toString(), "processing", attempts, null, Instant.now());
 
         try {
             PaymentParams params = buildPaymentParams(job);
             PaymentResult result = providerRegistry.get(job.getProvider()).initiatePayment(params);
 
-            job.setStatus(PayoutJobStatus.COMPLETED);
-            job.setResult(objectMapper.writeValueAsString(Map.of(
+            String resultJson = objectMapper.writeValueAsString(Map.of(
                     "providerRef", result.providerRef(),
                     "status", result.status().name()
-            )));
-            transferRepo.updateStatus(job.getTransferId(), TransferStatus.COMPLETED);
+            ));
+            payoutJobRepo.updateJobStatus(job.getId().toString(), "completed", attempts, resultJson, Instant.now());
+            transferRepo.updateStatusNative(job.getTransferId().toString(), "completed");
             metrics.recordPayoutJobCompleted();
             log.info("Payout job {} completed via {}: ref={}", job.getId(), job.getProvider(), result.providerRef());
 
         } catch (Exception e) {
-            log.error("Payout job {} failed attempt {}: {}", job.getId(), job.getAttempts(), e.getMessage());
-            if (job.getAttempts() >= maxAttempts) {
-                job.setStatus(PayoutJobStatus.FAILED);
-                transferRepo.updateStatus(job.getTransferId(), TransferStatus.FAILED);
+            log.error("Payout job {} failed attempt {}: {}", job.getId(), attempts, e.getMessage());
+            if (attempts >= maxAttempts) {
+                payoutJobRepo.updateJobStatus(job.getId().toString(), "failed", attempts, null, Instant.now());
+                transferRepo.updateStatusNative(job.getTransferId().toString(), "failed");
                 metrics.recordPayoutJobFailed();
             } else {
-                job.setStatus(PayoutJobStatus.PENDING);
-                // Exponential backoff, capped at 1 hour
-                long backoffSecs = Math.min(30L * (long) Math.pow(2, job.getAttempts()), 3600L);
-                job.setNextAttemptAt(Instant.now().plusSeconds(backoffSecs));
+                long backoffSecs = Math.min(30L * (long) Math.pow(2, attempts), 3600L);
+                payoutJobRepo.updateJobStatus(job.getId().toString(), "pending", attempts, null,
+                        Instant.now().plusSeconds(backoffSecs));
             }
         }
-        payoutJobRepo.save(job);
     }
 
     private PaymentParams buildPaymentParams(PayoutJob job) {

@@ -1,7 +1,9 @@
 package com.kirafintech.ledger.repository;
 
 import com.kirafintech.ledger.domain.PayoutJob;
+import com.kirafintech.ledger.domain.enums.PayoutJobStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.util.List;
@@ -36,7 +38,24 @@ public interface PayoutJobRepository extends JpaRepository<PayoutJob, UUID> {
         """, nativeQuery = true)
     List<PayoutJob> findFailedSince(@Param("since") Instant since);
 
-    // Dashboard: count by status
-    @Query(value = "SELECT COUNT(*) FROM payout_jobs WHERE status = :status", nativeQuery = true)
-    long countByStatus(@Param("status") String status);
+    // Worker: native UPDATE to avoid Hibernate storing uppercase enum names that PostgreSQL ENUM rejects
+    @Modifying
+    @Query(value = """
+        UPDATE payout_jobs
+        SET status = CAST(:status AS payout_job_status),
+            attempts = :attempts,
+            result = :result,
+            next_attempt_at = :nextAttemptAt,
+            updated_at = NOW()
+        WHERE id = CAST(:id AS uuid)
+        """, nativeQuery = true)
+    void updateJobStatus(@Param("id") String id,
+                         @Param("status") String status,
+                         @Param("attempts") int attempts,
+                         @Param("result") String result,
+                         @Param("nextAttemptAt") Instant nextAttemptAt);
+
+    // Dashboard: JPQL with enum type so Hibernate handles the mapping correctly
+    @Query("SELECT COUNT(p) FROM PayoutJob p WHERE p.status = :status")
+    long countByStatus(@Param("status") PayoutJobStatus status);
 }
