@@ -13,3 +13,7 @@ app:
     poll-interval-ms: 999999999
   payout-worker:
     poll-interval-ms: 999999999
+  reconciliation:
+    interval-ms: 999999999
+  alerting:
+    interval-ms: 999999999

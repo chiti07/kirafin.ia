@@ -6,6 +6,7 @@ import com.kirafintech.ledger.application.port.in.LedgerPort;
 import com.kirafintech.ledger.application.port.in.LedgerPort.FeeCommand;
 import com.kirafintech.ledger.application.port.in.LedgerPort.PostInboundCreditCommand;
 import com.kirafintech.ledger.application.port.in.OfframpPort;
+import com.kirafintech.ledger.observability.KiraMetrics;
 import com.kirafintech.ledger.domain.Transfer;
 import com.kirafintech.ledger.domain.enums.TransferType;
 import org.slf4j.Logger;
@@ -26,13 +27,16 @@ public class OfframpService implements OfframpPort {
     private final FeeCalculator feeCalc;
     private final RouteEngine routeEngine;
     private final ObjectMapper objectMapper;
+    private final KiraMetrics metrics;
 
     public OfframpService(LedgerPort ledger, FeeCalculator feeCalc,
-                          RouteEngine routeEngine, ObjectMapper objectMapper) {
+                          RouteEngine routeEngine, ObjectMapper objectMapper,
+                          KiraMetrics metrics) {
         this.ledger = ledger;
         this.feeCalc = feeCalc;
         this.routeEngine = routeEngine;
         this.objectMapper = objectMapper;
+        this.metrics = metrics;
     }
 
     /**
@@ -56,11 +60,12 @@ public class OfframpService implements OfframpPort {
                 "exchange_rate", "1:1-mock"
         ));
 
+        // Credit grossCents; fee entries debit the fees back out, so net = grossCents - totalFees
         PostInboundCreditCommand cmd = new PostInboundCreditCommand(
                 offrampKey,
                 accountId,
                 SystemAccounts.KIRA_LIQUIDITY_POOL,
-                fees.netCents(),
+                fees.grossCents(),
                 "USD",
                 TransferType.CRYPTO,
                 true,
@@ -80,8 +85,9 @@ public class OfframpService implements OfframpPort {
 
         List<Transfer> routesFired = routeEngine.evaluateAndFire(accountId, creditTransfer.getId());
 
-        log.info("offramp complete creditTransfer={} netCents={} routesFired={}",
-                creditTransfer.getId(), fees.netCents(), routesFired.size());
+        metrics.recordFeesCollected(fees.totalFeeCents());
+        log.info("offramp complete creditTransfer={} grossCents={} netCents={} routesFired={}",
+                creditTransfer.getId(), fees.grossCents(), fees.netCents(), routesFired.size());
     }
 
     private String toJson(Object obj) {

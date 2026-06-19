@@ -7,6 +7,7 @@ import com.kirafintech.ledger.domain.Entry;
 import com.kirafintech.ledger.domain.PayoutJob;
 import com.kirafintech.ledger.domain.Transfer;
 import com.kirafintech.ledger.domain.enums.*;
+import com.kirafintech.ledger.observability.KiraMetrics;
 import com.kirafintech.ledger.repository.EntryRepository;
 import com.kirafintech.ledger.repository.PayoutJobRepository;
 import com.kirafintech.ledger.repository.TransferRepository;
@@ -28,15 +29,17 @@ public class LedgerService implements LedgerPort {
     private final PayoutJobRepository payoutJobRepo;
     private final BalanceService balanceService;
     private final ObjectMapper objectMapper;
+    private final KiraMetrics metrics;
 
     public LedgerService(TransferRepository transferRepo, EntryRepository entryRepo,
                          PayoutJobRepository payoutJobRepo, BalanceService balanceService,
-                         ObjectMapper objectMapper) {
+                         ObjectMapper objectMapper, KiraMetrics metrics) {
         this.transferRepo = transferRepo;
         this.entryRepo = entryRepo;
         this.payoutJobRepo = payoutJobRepo;
         this.balanceService = balanceService;
         this.objectMapper = objectMapper;
+        this.metrics = metrics;
     }
 
     @Override
@@ -46,6 +49,7 @@ public class LedgerService implements LedgerPort {
                 .map(existing -> {
                     log.info("postInboundCredit idempotency hit key={} existingTransfer={}",
                             cmd.idempotencyKey(), existing.getId());
+                    metrics.recordIdempotencyHit();
                     return existing;
                 })
                 .orElseGet(() -> {
@@ -67,6 +71,7 @@ public class LedgerService implements LedgerPort {
                             EntryDirection.DEBIT, cmd.amount(), cmd.currency(),
                             cmd.confirmed(), cmd.metadata()));
 
+                    metrics.recordTransferCreated();
                     log.info("postInboundCredit created transfer={} account={} amount={} {} confirmed={}",
                             t.getId(), cmd.accountId(), cmd.amount(), cmd.currency(), cmd.confirmed());
                     return t;
@@ -80,6 +85,7 @@ public class LedgerService implements LedgerPort {
                 .map(existing -> {
                     log.info("postOutboundDebit idempotency hit key={} existingTransfer={}",
                             cmd.idempotencyKey(), existing.getId());
+                    metrics.recordIdempotencyHit();
                     return existing;
                 })
                 .orElseGet(() -> {
@@ -109,6 +115,7 @@ public class LedgerService implements LedgerPort {
 
                     payoutJobRepo.save(buildPayoutJob(t, cmd));
 
+                    metrics.recordTransferCreated();
                     log.info("postOutboundDebit created transfer={} account={} amount={} {} provider={}",
                             t.getId(), cmd.accountId(), cmd.amount(), cmd.currency(), cmd.provider());
                     return t;
