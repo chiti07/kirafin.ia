@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import java.util.List;
 import java.util.UUID;
 
 public interface EntryRepository extends JpaRepository<Entry, UUID> {
@@ -41,4 +42,13 @@ public interface EntryRepository extends JpaRepository<Entry, UUID> {
     @Modifying
     @Query("UPDATE Entry e SET e.confirmed = true WHERE e.transferId = :transferId AND e.confirmed = false")
     int confirmEntriesForTransfer(@Param("transferId") UUID transferId);
+
+    // Reconciliation: entries still unconfirmed after the given threshold (entry-never-confirmed)
+    @Query(value = """
+        SELECT * FROM entries
+        WHERE confirmed = false
+          AND created_at < NOW() - INTERVAL '1 minute' * :thresholdMinutes
+        ORDER BY created_at
+        """, nativeQuery = true)
+    List<Entry> findStaleUnconfirmedEntries(@Param("thresholdMinutes") int thresholdMinutes);
 }

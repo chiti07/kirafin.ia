@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kirafintech.ledger.domain.PayoutJob;
 import com.kirafintech.ledger.domain.enums.PayoutJobStatus;
 import com.kirafintech.ledger.domain.enums.TransferStatus;
+import com.kirafintech.ledger.observability.KiraMetrics;
 import com.kirafintech.ledger.provider.FiatRailProviderRegistry;
 import com.kirafintech.ledger.provider.PaymentParams;
 import com.kirafintech.ledger.provider.PaymentResult;
@@ -30,17 +31,20 @@ public class PayoutWorker {
     private final TransferRepository transferRepo;
     private final FiatRailProviderRegistry providerRegistry;
     private final ObjectMapper objectMapper;
+    private final KiraMetrics metrics;
     private final int maxAttempts;
     private final int batchSize;
 
     public PayoutWorker(PayoutJobRepository payoutJobRepo, TransferRepository transferRepo,
                         FiatRailProviderRegistry providerRegistry, ObjectMapper objectMapper,
+                        KiraMetrics metrics,
                         @Value("${app.payout-worker.max-attempts}") int maxAttempts,
                         @Value("${app.payout-worker.batch-size}") int batchSize) {
         this.payoutJobRepo = payoutJobRepo;
         this.transferRepo = transferRepo;
         this.providerRegistry = providerRegistry;
         this.objectMapper = objectMapper;
+        this.metrics = metrics;
         this.maxAttempts = maxAttempts;
         this.batchSize = batchSize;
     }
@@ -73,6 +77,7 @@ public class PayoutWorker {
                     "status", result.status().name()
             )));
             transferRepo.updateStatus(job.getTransferId(), TransferStatus.COMPLETED);
+            metrics.recordPayoutJobCompleted();
             log.info("Payout job {} completed via {}: ref={}", job.getId(), job.getProvider(), result.providerRef());
 
         } catch (Exception e) {
@@ -80,6 +85,7 @@ public class PayoutWorker {
             if (job.getAttempts() >= maxAttempts) {
                 job.setStatus(PayoutJobStatus.FAILED);
                 transferRepo.updateStatus(job.getTransferId(), TransferStatus.FAILED);
+                metrics.recordPayoutJobFailed();
             } else {
                 job.setStatus(PayoutJobStatus.PENDING);
                 // Exponential backoff, capped at 1 hour

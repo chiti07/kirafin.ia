@@ -21,10 +21,16 @@ management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,prometheus,info,metrics
   endpoint:
     health:
       show-details: never
+    prometheus:
+      enabled: true
+  metrics:
+    tags:
+      application: kira-ledger
+      environment: ${SPRING_PROFILES_ACTIVE:local}
 
 app:
   api-key: ${API_KEY:dev-key-change-me}
@@ -41,3 +47,10 @@ app:
     poll-interval-ms: ${PAYOUT_WORKER_POLL_MS:10000}
     batch-size: ${PAYOUT_WORKER_BATCH:5}
     max-attempts: ${PAYOUT_WORKER_MAX_ATTEMPTS:5}
+  reconciliation:
+    interval-ms: ${RECONCILIATION_INTERVAL_MS:300000}       # 5 min
+    unconfirmed-threshold-minutes: ${RECON_UNCONFIRMED_MINUTES:15}
+  alerting:
+    interval-ms: ${ALERTING_INTERVAL_MS:60000}              # 1 min
+    stuck-pending-minutes: ${ALERT_STUCK_PENDING_MINUTES:30}
+    unconfirmed-threshold-minutes: ${ALERT_UNCONFIRMED_MINUTES:15}

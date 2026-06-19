@@ -1,0 +1,304 @@
+{
+  "title": "Kira Ledger — System Overview",
+  "uid": "kira-ledger-v1",
+  "version": 1,
+  "schemaVersion": 39,
+  "refresh": "15s",
+  "time": { "from": "now-1h", "to": "now" },
+  "tags": ["kira", "fintech", "ledger"],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Double-Entry Net (must be 0)",
+      "description": "Credits minus debits across all entries. Any non-zero value is a data integrity failure — stop transactions immediately.",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 },
+              { "color": "red", "value": -1 }
+            ]
+          },
+          "mappings": [{ "type": "value", "options": { "0": { "text": "OK ✓", "color": "green" } } }]
+        }
+      },
+      "targets": [{
+        "expr": "kira_double_entry_net_cents",
+        "legendFormat": "Net (cents)"
+      }],
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+    },
+    {
+      "id": 2,
+      "title": "Northwind Available Balance",
+      "description": "Northwind Coffee Co. available USD balance in cents. Unexpected zero after a deposit = route firing issue.",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "green", "value": 10000 }
+            ]
+          }
+        }
+      },
+      "targets": [{
+        "expr": "kira_northwind_available_balance_cents",
+        "legendFormat": "Balance (cents)"
+      }],
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+    },
+    {
+      "id": 3,
+      "title": "Platform Fees Collected",
+      "description": "Cumulative fees accrued in the Kira Platform Fees account. A plateau = no off-ramp activity.",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": { "mode": "fixed", "fixedColor": "blue" }
+        }
+      },
+      "targets": [{
+        "expr": "kira_fees_platform_balance_cents",
+        "legendFormat": "Fees (cents)"
+      }],
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+    },
+    {
+      "id": 4,
+      "title": "Payout Queue Depth",
+      "description": "Pending payout jobs. Growing queue = worker not keeping up. Any value > 20 for > 2 min warrants investigation.",
+      "type": "stat",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "reduceOptions": { "calcs": ["lastNotNull"] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 5 },
+              { "color": "red", "value": 20 }
+            ]
+          }
+        }
+      },
+      "targets": [{
+        "expr": "kira_payout_jobs_pending_current",
+        "legendFormat": "Pending jobs"
+      }],
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+    },
+    {
+      "id": 5,
+      "title": "Transfers Created (rate)",
+      "description": "Rate of new transfers per minute. Useful for detecting traffic spikes or complete silence.",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+        }
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "expr": "rate(kira_transfers_created_total[2m]) * 60",
+          "legendFormat": "Transfers / min"
+        },
+        {
+          "expr": "rate(kira_idempotency_hits_total[2m]) * 60",
+          "legendFormat": "Idempotency hits / min"
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+    },
+    {
+      "id": 6,
+      "title": "Payout Job Outcomes",
+      "description": "Rate of completed vs failed payout jobs. Any failed rate > 0 is a settlement alarm.",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Failed / min" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }]
+          }
+        ]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "expr": "rate(kira_payout_jobs_completed_total[2m]) * 60",
+          "legendFormat": "Completed / min"
+        },
+        {
+          "expr": "rate(kira_payout_jobs_failed_total[2m]) * 60",
+          "legendFormat": "Failed / min"
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+    },
+    {
+      "id": 7,
+      "title": "HTTP Request Rate by Endpoint",
+      "description": "Requests per second per URI. Spot traffic patterns and unexpected load.",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": { "lineWidth": 1, "fillOpacity": 5 }
+        }
+      },
+      "options": { "legend": { "displayMode": "table", "placement": "right" } },
+      "targets": [{
+        "expr": "sum by(uri) (rate(http_server_requests_seconds_count{application=\"kira-ledger\"}[2m]))",
+        "legendFormat": "{{uri}}"
+      }],
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+    },
+    {
+      "id": 8,
+      "title": "HTTP p99 Latency by Endpoint",
+      "description": "99th percentile latency. Spikes here before error rate rises = DB/network pressure.",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": { "lineWidth": 2 },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.5 },
+              { "color": "red", "value": 2 }
+            ]
+          }
+        }
+      },
+      "options": { "legend": { "displayMode": "table", "placement": "right" } },
+      "targets": [{
+        "expr": "histogram_quantile(0.99, sum by(uri, le) (rate(http_server_requests_seconds_bucket{application=\"kira-ledger\"}[2m])))",
+        "legendFormat": "p99 {{uri}}"
+      }],
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+    },
+    {
+      "id": 9,
+      "title": "JVM Memory Usage",
+      "description": "Heap used vs committed. Sustained climb toward max = memory leak or undersized heap.",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": { "lineWidth": 2, "fillOpacity": 15 }
+        }
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "expr": "jvm_memory_used_bytes{area=\"heap\",application=\"kira-ledger\"}",
+          "legendFormat": "Heap used"
+        },
+        {
+          "expr": "jvm_memory_committed_bytes{area=\"heap\",application=\"kira-ledger\"}",
+          "legendFormat": "Heap committed"
+        },
+        {
+          "expr": "jvm_memory_max_bytes{area=\"heap\",application=\"kira-ledger\"}",
+          "legendFormat": "Heap max"
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+    },
+    {
+      "id": 10,
+      "title": "DB Connection Pool",
+      "description": "HikariCP active vs pending connections. Pending > 0 = pool exhausted, queries queueing.",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Pending" },
+            "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }]
+          }
+        ]
+      },
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "targets": [
+        {
+          "expr": "hikaricp_connections_active{application=\"kira-ledger\"}",
+          "legendFormat": "Active"
+        },
+        {
+          "expr": "hikaricp_connections_idle{application=\"kira-ledger\"}",
+          "legendFormat": "Idle"
+        },
+        {
+          "expr": "hikaricp_connections_pending{application=\"kira-ledger\"}",
+          "legendFormat": "Pending"
+        },
+        {
+          "expr": "hikaricp_connections_max{application=\"kira-ledger\"}",
+          "legendFormat": "Pool max"
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+    }
+  ],
+  "templating": {
+    "list": [{
+      "name": "DS_PROMETHEUS",
+      "type": "datasource",
+      "query": "prometheus",
+      "current": { "text": "Prometheus", "value": "Prometheus" },
+      "hide": 2
+    }]
+  }
+}
