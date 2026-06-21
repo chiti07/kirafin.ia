@@ -28,10 +28,10 @@ public class BalanceController {
     @GetMapping
     public ResponseEntity<BalanceResponse> getBalance(@PathVariable UUID id) {
         accountRepo.findById(id).orElseThrow(() -> new AccountNotFoundException(id));
-        String currency = "USD";
-        long available = balancePort.getAvailableBalance(id, currency);
-        long pending = balancePort.getPendingBalance(id, currency);
-        log.info("getBalance account={} available={} pending={}", id, available, pending);
-        return ResponseEntity.ok(new BalanceResponse(available, pending, currency));
+        long available = balancePort.getAvailableBalance(id, "USD");
+        long pending = balancePort.getPendingBalance(id, "USD");
+        long pendingUsdc = balancePort.getPendingBalance(id, "USDC");
+        log.info("getBalance account={} available={} pending={} pendingUsdc={}", id, available, pending, pendingUsdc);
+        return ResponseEntity.ok(new BalanceResponse(available, pending, pendingUsdc, "USD"));
     }
 }

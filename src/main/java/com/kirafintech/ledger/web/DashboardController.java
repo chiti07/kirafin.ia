@@ -56,6 +56,7 @@ public class DashboardController {
                         a.getClientName(),
                         balanceService.getAvailableBalance(a.getId(), a.getCurrency()),
                         balanceService.getPendingBalance(a.getId(), a.getCurrency()),
+                        balanceService.getPendingBalance(a.getId(), "USDC"),
                         a.getCurrency()
                 ))
                 .toList();
