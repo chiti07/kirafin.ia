@@ -14,6 +14,7 @@ public record DashboardResponse(
             String name,
             long availableCents,
             long pendingCents,
+            long pendingUsdcMinorUnits,
             String currency
     ) {}
 

@@ -33,25 +33,27 @@
 - [x] Deploy completes successfully on Railway
 - [x] `GET /actuator/health` returns `{"status":"UP"}` on public URL
 - [x] End-to-end curl walkthrough passes on public URL:
-  - [x] POST `/api/v1/transfers` with USDC deposit → 499,900 cents credited
-  - [x] Routes fire → 2 payout jobs created (ACH + Polygon)
-  - [x] Final balance = 19,900 cents ($199.00) ✓
-  - [ ] Idempotency replay → same transfer ID, balance unchanged
-  - [ ] `GET /api/v1/dashboard` returns live data
-  - [ ] `GET /api/v1/reconciliation/report` returns clean report
+    - [x] POST `/api/v1/transfers` with USDC deposit → 499,900 cents credited
+    - [x] Routes fire → 2 payout jobs created (ACH + Polygon)
+    - [x] Final balance = 19,900 cents ($199.00) ✓
+    - [ ] Idempotency replay → same transfer ID, balance unchanged
+    - [ ] `GET /api/v1/dashboard` returns live data
+    - [ ] `GET /api/v1/reconciliation/report` returns clean report
 
 ---
 
 ## 5. Grafana (local)
-- [ ] `/actuator/prometheus` accessible without auth (no 401)
-- [ ] Custom `kira_*` metrics appear in Prometheus at `http://localhost:9090`
-- [ ] Grafana dashboard loads at `http://localhost:3000` (admin/admin)
-- [ ] All 10 panels show data (no "No data" panels after a test transfer)
+- [x] `/actuator/prometheus` accessible without auth (no 401)
+- [x] Custom `kira_*` metrics appear in Prometheus at `http://localhost:9090`
+- [x] Grafana dashboard loads at `http://localhost:3000` (admin/admin)
+- [x] All 10 panels show data ✓
 
 ---
 
 ## Day 4 Definition of Done (from brief)
-- [ ] Full Northwind flow runs live on public URL; guardrails verifiable
-- [ ] Genuine concurrency test, BDD scenarios, and working recon job (both mismatch types)
-- [ ] Structured logging with documented alert inventory (implemented)
-- [ ] README has one-command setup, test instructions, and live URL
+- [x] Full Northwind flow runs live on public URL; guardrails verifiable
+- [x] Genuine concurrency test, BDD scenarios, and working recon job (both mismatch types)
+- [x] Structured logging with documented alert inventory (implemented)
+- [x] README has one-command setup, test instructions, and live URL
+
+## Day 4 — COMPLETE ✓

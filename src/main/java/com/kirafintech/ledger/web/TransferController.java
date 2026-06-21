@@ -39,6 +39,8 @@ public class TransferController {
         log.info("createTransfer account={} amount={} {} confirmed={}",
                 req.accountId(), req.amountMinorUnits(), req.currency(), req.confirmed());
 
+        boolean alreadyExists = transferRepo.existsByIdempotencyKey(req.idempotencyKey());
+
         TransferType type = TransferType.valueOf(req.type().toUpperCase());
 
         PostInboundCreditCommand cmd = new PostInboundCreditCommand(
@@ -54,15 +56,16 @@ public class TransferController {
         );
         Transfer t = ledger.postInboundCredit(cmd);
 
-        if (req.confirmed() && "USDC".equalsIgnoreCase(req.currency())) {
+        if (!alreadyExists && req.confirmed() && "USDC".equalsIgnoreCase(req.currency())) {
             log.info("createTransfer triggering off-ramp for confirmed USDC transfer={}", t.getId());
             offrampPort.execute(t.getId(), req.accountId(), req.amountMinorUnits(), req.chain());
+        } else if (alreadyExists) {
+            log.info("createTransfer idempotency hit key={} transfer={} — skipping off-ramp",
+                    req.idempotencyKey(), t.getId());
         }
 
         log.info("createTransfer done transfer={} status={}", t.getId(), t.getStatus());
-        boolean created = t.getCreatedAt() != null &&
-                System.currentTimeMillis() - t.getCreatedAt().toEpochMilli() < 2000;
-        return ResponseEntity.status(created ? 201 : 200).body(TransferResponse.from(t));
+        return ResponseEntity.status(alreadyExists ? 200 : 201).body(TransferResponse.from(t));
     }
 
     @GetMapping("/{id}")
@@ -70,5 +73,37 @@ public class TransferController {
         return transferRepo.findById(id)
                 .map(t -> ResponseEntity.ok(TransferResponse.from(t)))
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * Simulates the blockchain watcher reaching the confirmation threshold.
+     * Flips entries confirmed=false → true, marks transfer COMPLETED,
+     * then fires the off-ramp for USDC transfers (USDC → USD conversion + routes).
+     * Idempotent: replaying on an already-confirmed transfer is a no-op.
+     */
+    @PostMapping("/{id}/confirm")
+    public ResponseEntity<TransferResponse> confirmTransfer(@PathVariable UUID id) {
+        Transfer t = transferRepo.findById(id).orElse(null);
+        if (t == null) return ResponseEntity.notFound().build();
+
+        log.info("confirmTransfer id={} currentStatus={}", id, t.getStatus());
+
+        ledger.confirmTransfer(id);
+
+        Transfer confirmed = transferRepo.findById(id).orElseThrow();
+
+        if ("USDC".equalsIgnoreCase(confirmed.getCurrency())) {
+            String offrampKey = id + ":offramp";
+            boolean offrampAlreadyRan = transferRepo.existsByIdempotencyKey(offrampKey);
+            if (!offrampAlreadyRan) {
+                log.info("confirmTransfer triggering off-ramp for USDC transfer={}", id);
+                offrampPort.execute(id, confirmed.getAccountId(),
+                        confirmed.getAmountMinorUnits(), confirmed.getChain());
+            } else {
+                log.info("confirmTransfer off-ramp already ran for transfer={} — skipping", id);
+            }
+        }
+
+        return ResponseEntity.ok(TransferResponse.from(transferRepo.findById(id).orElseThrow()));
     }
 }
