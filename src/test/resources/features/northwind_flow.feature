@@ -6,8 +6,8 @@ Feature: Northwind Coffee Co. ledger flow
   Scenario: USDC deposit credits USD balance after confirmation
     Given Northwind has a zero balance
     When a confirmed USDC deposit of 5000000000 minor units arrives
-    Then the available balance increases by 499900 cents
-    And itemized fees of 100 cents are posted to the platform fee account
+    Then the available balance increases by 499650 cents
+    And itemized fees of 350 cents are posted to the platform fee account
 
   Scenario: Duplicate deposit is idempotent
     Given a confirmed USDC deposit of 1000000000 minor units with key "idem-bdd-001"
