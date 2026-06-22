@@ -14,4 +14,4 @@ sed -e "s|__KIRA_LEDGER_TARGET__|$HOST|g" \
 echo "Generated prometheus.yml:"
 cat /tmp/prometheus.yml
 
-exec /bin/prometheus --config.file=/tmp/prometheus.yml --storage.tsdb.path=/prometheus
+exec /bin/prometheus --config.file=/tmp/prometheus.yml --storage.tsdb.path=/prometheus --web.listen-address=0.0.0.0:9090
