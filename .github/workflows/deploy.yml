@@ -29,4 +29,10 @@ jobs:
       - name: Deploy to Railway
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: railway up --detach
+          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+        run: |
+          if [ -z "$RAILWAY_TOKEN" ]; then
+            echo "Error: RAILWAY_TOKEN is not set in GitHub secrets"
+            exit 1
+          fi
+          railway up --detach
