@@ -1,0 +1,9 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'kira-ledger-production'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['${KIRA_LEDGER_HOST:kira-ledger.railway.internal:8080}']

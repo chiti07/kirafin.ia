@@ -297,7 +297,7 @@
       "name": "DS_PROMETHEUS",
       "type": "datasource",
       "query": "prometheus",
-      "current": { "text": "Prometheus", "value": "Prometheus" },
+      "current": { "text": "Prometheus", "value": "kira-prometheus" },
       "hide": 2
     }]
   }
