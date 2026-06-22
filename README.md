@@ -14,7 +14,7 @@ docker compose up -d && ./gradlew bootRun
 
 Requires: Java 21, Docker (Colima or Docker Desktop).
 
-App starts on **:8080**. Default API key: `dev-key-change-me`.
+App starts on **:8080**. Default API key: `dev-key-demo-kira`.
 
 ---
 
@@ -39,16 +39,16 @@ Expected: **12 tests pass** — 3 fee unit tests + 5 ledger integration tests + 
 
 All endpoints require `X-API-Key: dev-key-change-me` except `/actuator/health`.
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/actuator/health` | Health check (no auth) |
-| GET | `/api/v1/accounts/{id}/balance` | Available + pending balance |
-| POST | `/api/v1/accounts` | Create account |
-| POST | `/api/v1/transfers` | Manual inbound credit trigger |
-| GET | `/api/v1/transfers/{id}` | Transfer detail |
+| Method | Path | Description                                        |
+|--------|------|----------------------------------------------------|
+| GET | `/actuator/health` | Health check (no auth)                             |
+| GET | `/api/v1/accounts/{id}/balance` | Available + pending balance                        |
+| POST | `/api/v1/accounts` | Create account                                     |
+| POST | `/api/v1/transfers` | Manual inbound/outbound credit trigger             |
+| GET | `/api/v1/transfers/{id}` | Transfer detail                                    |
 | GET | `/api/v1/dashboard` | Live balances, fees, transfer state, recon summary |
-| GET | `/api/v1/reconciliation/report` | On-demand reconciliation run |
-| GET | `/api/v1/routes` | Active routes |
+| GET | `/api/v1/reconciliation/report` | On-demand reconciliation run                       |
+| GET | `/api/v1/routes` | Active routes                                      |
 
 ---
 
