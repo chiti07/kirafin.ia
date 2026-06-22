@@ -22,22 +22,26 @@ public class FeeCalculator {
 
     private final long platformFeeBps;
     private final long fixedFeeCents;
+    private final long fixedNetworkFeeCents;
 
     public FeeCalculator(@Value("${app.offramp.platform-fee-bps}") long platformFeeBps,
-                         @Value("${app.offramp.fixed-fee-cents}") long fixedFeeCents) {
+                         @Value("${app.offramp.fixed-fee-cents}") long fixedFeeCents,
+                         @Value("${app.offramp.fixed-networkfee-cents}") long fixedNetworkFeeCents) {
         this.platformFeeBps = platformFeeBps;
         this.fixedFeeCents = fixedFeeCents;
+        this.fixedNetworkFeeCents = fixedNetworkFeeCents;
     }
 
     public FeeBreakdown calculate(long usdcMinorUnits) {
         long grossCents = usdcMinorUnits / 10_000L;
         long platformFee = (grossCents * platformFeeBps) / 10_000L;
+        long networkFee = fixedNetworkFeeCents;
         long fixedFee = fixedFeeCents;
-        long totalFee = platformFee + fixedFee;
+        long totalFee = platformFee + fixedFee + networkFee;
         long netCents = grossCents - totalFee;
-        FeeBreakdown breakdown = new FeeBreakdown(grossCents, platformFee, fixedFee, totalFee, netCents);
-        log.debug("fees usdcMinorUnits={} grossCents={} platform={} fixed={} net={}",
-                usdcMinorUnits, grossCents, platformFee, fixedFee, netCents);
+        FeeBreakdown breakdown = new FeeBreakdown(grossCents, platformFee, fixedFee, networkFee, totalFee, netCents);
+        log.debug("fees usdcMinorUnits={} grossCents={} platform={} fixed={} network={} net={}",
+                usdcMinorUnits, grossCents, platformFee, fixedFee, networkFee, netCents);
         return breakdown;
     }
 
@@ -45,6 +49,7 @@ public class FeeCalculator {
             long grossCents,
             long platformFeeCents,
             long fixedFeeCents,
+            long fixedNetworkFeeCents,
             long totalFeeCents,
             long netCents
     ) {}

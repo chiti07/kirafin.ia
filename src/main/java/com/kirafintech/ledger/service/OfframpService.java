@@ -82,6 +82,10 @@ public class OfframpService implements OfframpPort {
             ledger.postFeeEntries(creditTransfer, accountId,
                     new FeeCommand("fixed_passthrough", fees.fixedFeeCents()));
         }
+        if (fees.fixedNetworkFeeCents() > 0) {
+            ledger.postFeeEntries(creditTransfer, accountId,
+                    new FeeCommand("network_fee", fees.fixedNetworkFeeCents()));
+        }
 
         List<Transfer> routesFired = routeEngine.evaluateAndFire(accountId, creditTransfer.getId());
 

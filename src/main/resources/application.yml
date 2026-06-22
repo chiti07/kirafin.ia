@@ -43,6 +43,7 @@ app:
   offramp:
     platform-fee-bps: ${PLATFORM_FEE_BPS:1}
     fixed-fee-cents: ${FIXED_FEE_CENTS:50}
+    fixed-networkfee-cents: ${FIXED_NETWORK_FEE_CENTS:250}
   payout-worker:
     poll-interval-ms: ${PAYOUT_WORKER_POLL_MS:10000}
     batch-size: ${PAYOUT_WORKER_BATCH:5}
