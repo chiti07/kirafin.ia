@@ -4,7 +4,7 @@
 > **Author:** Juan Luis Chitiva
 > **Last updated:** 2026-06-16
 
----
+-------
 
 ## Table of Contents
 
