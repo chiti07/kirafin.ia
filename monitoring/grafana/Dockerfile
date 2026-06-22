@@ -9,7 +9,8 @@ COPY provisioning/dashboards /etc/grafana/provisioning/dashboards
 COPY entrypoint.sh /entrypoint.sh
 
 USER root
-RUN chmod +x /entrypoint.sh
+RUN chmod +x /entrypoint.sh \
+    && chmod 666 /etc/grafana/provisioning/datasources/prometheus.yml
 USER grafana
 
 EXPOSE 3000
