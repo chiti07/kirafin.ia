@@ -29,6 +29,12 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest req,
                                     HttpServletResponse res,
                                     FilterChain chain) throws ServletException, IOException {
+        String path = req.getServletPath();
+        if (path.startsWith("/actuator/health") || path.startsWith("/actuator/prometheus")) {
+            chain.doFilter(req, res);
+            return;
+        }
+
         String key = req.getHeader(HEADER);
         if (expectedKey.equals(key)) {
             var auth = new UsernamePasswordAuthenticationToken(
