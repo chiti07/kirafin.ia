@@ -6,5 +6,12 @@ ENV GF_USERS_ALLOW_SIGN_UP=false
 
 COPY provisioning/datasources /etc/grafana/provisioning/datasources
 COPY provisioning/dashboards /etc/grafana/provisioning/dashboards
+COPY entrypoint.sh /entrypoint.sh
+
+USER root
+RUN chmod +x /entrypoint.sh
+USER grafana
 
 EXPOSE 3000
+
+ENTRYPOINT ["/entrypoint.sh"]
