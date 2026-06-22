@@ -10,7 +10,7 @@ COPY entrypoint.sh /entrypoint.sh
 
 USER root
 RUN chmod +x /entrypoint.sh \
-    && chmod 666 /etc/grafana/provisioning/datasources/prometheus.yml
+    && chmod 777 /etc/grafana/provisioning/datasources
 USER grafana
 
 EXPOSE 3000
