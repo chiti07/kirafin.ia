@@ -361,3 +361,4 @@ The lookup + write happens inside the same DB transaction as the ledger entries.
 - **Auto-correction on reconciliation mismatch** — the reconciler flags discrepancies; human review resolves them.
 - **ACH partial fills** — treated as a failed transfer; the ledger debit is reversed. Full-amount-only assumption.
 - **Sub-client minimum balance** — no minimum balance rule exists in the brief. Zero is a valid terminal state (ADR-011).
+- **Monitoring** — no monitoring for prod service implemented. Grafana service  is not polling metrics from Prometheus. 
