@@ -11,6 +11,10 @@ public record CreateTransferRequest(
         @NotBlank String type,
         @Positive long amountMinorUnits,
         @NotBlank String currency,
+        String direction,
         String chain,
-        boolean confirmed
+        boolean confirmed,
+        String destinationRef,
+        String destinationType,
+        String provider
 ) {}

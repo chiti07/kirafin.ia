@@ -25,6 +25,12 @@ public class GlobalExceptionHandler {
                 .body(Map.of("error", "ACCOUNT_NOT_FOUND", "message", ex.getMessage()));
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
+        return ResponseEntity.badRequest()
+                .body(Map.of("error", "VALIDATION_ERROR", "message", ex.getMessage()));
+    }
+
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, Object>> handleDataIntegrity(DataIntegrityViolationException ex) {
         String msg = ex.getMessage() != null ? ex.getMessage() : "";
